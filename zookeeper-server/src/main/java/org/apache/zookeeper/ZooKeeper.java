@@ -771,29 +771,29 @@ public class ZooKeeper {
             CreateMode createMode)
         throws KeeperException, InterruptedException
     {
-        final String clientPath = path;
-        PathUtils.validatePath(clientPath, createMode.isSequential());
+        final String clientPath = path; //传入的路径，比如/rr
+        PathUtils.validatePath(clientPath, createMode.isSequential()); //验证路径
 
-        final String serverPath = prependChroot(clientPath);
+        final String serverPath = prependChroot(clientPath); //给传入的路径加上一个根节点
 
-        RequestHeader h = new RequestHeader();
-        h.setType(ZooDefs.OpCode.create);
-        CreateRequest request = new CreateRequest();
-        CreateResponse response = new CreateResponse();
-        request.setData(data);
-        request.setFlags(createMode.toFlag());
-        request.setPath(serverPath);
+        RequestHeader h = new RequestHeader(); //验证完成以后，构建一个请求头
+        h.setType(ZooDefs.OpCode.create); //传入要进行测操作，ZooDefs.OpCode.create里面存的就是对应命令的代码，create=1
+        CreateRequest request = new CreateRequest(); //创建一个Create的请求
+        CreateResponse response = new CreateResponse();//创建一个Create的response
+        request.setData(data);//数据内容赋值
+        request.setFlags(createMode.toFlag());//数据内容类型
+        request.setPath(serverPath);//节点名字
         if (acl != null && acl.size() == 0) {
             throw new KeeperException.InvalidACLException();
         }
         request.setAcl(acl);
         ReplyHeader r = cnxn.submitRequest(h, request, response, null);
-        if (r.getErr() != 0) {
+        if (r.getErr() != 0) {//有错误就抛出异常
             throw KeeperException.create(KeeperException.Code.get(r.getErr()),
                     clientPath);
         }
         if (cnxn.chrootPath == null) {
-            return response.getPath();
+            return response.getPath(); //没有问题把路径返回出去，然后显示出来
         } else {
             return response.getPath().substring(cnxn.chrootPath.length());
         }

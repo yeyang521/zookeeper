@@ -54,7 +54,7 @@ abstract class ClientCnxnSocket {
     /**
      * After the length is read, a new incomingBuffer is allocated in
      * readLength() to receive the full message.
-     */
+     */  //标志incomingBuffer未分配
     protected ByteBuffer incomingBuffer = lenBuffer;
     protected long sentCount = 0;
     protected long recvCount = 0;

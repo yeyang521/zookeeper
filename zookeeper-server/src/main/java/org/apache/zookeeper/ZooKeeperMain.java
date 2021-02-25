@@ -279,7 +279,7 @@ public class ZooKeeperMain {
         }
         host = newHost;
         boolean readOnly = cl.getOption("readonly") != null;
-        zk = new ZooKeeper(host,
+        zk = new ZooKeeper(host,//zk原生客户端
                  Integer.parseInt(cl.getOption("timeout")),
                  new MyWatcher(), readOnly);
     }

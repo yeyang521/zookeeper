@@ -73,7 +73,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                                 + ", likely server has closed socket");
             }
             if (!incomingBuffer.hasRemaining()) {
-                incomingBuffer.flip();
+                incomingBuffer.flip(); // 将Buffer从写模式切换到读模式
                 if (incomingBuffer == lenBuffer) {
                     recvCount++;
                     readLength();
@@ -100,29 +100,29 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         }
         if (sockKey.isWritable()) {
             synchronized(outgoingQueue) {
-                Packet p = findSendablePacket(outgoingQueue,
+                Packet p = findSendablePacket(outgoingQueue,     //取出outgoingQueue里的数据存入packet中
                         cnxn.sendThread.clientTunneledAuthenticationInProgress());
 
                 if (p != null) {
                     updateLastSend();
                     // If we already started writing p, p.bb will already exist
-                    if (p.bb == null) {
+                    if (p.bb == null) {//BB:ByteBuffer
                         if ((p.requestHeader != null) &&
                                 (p.requestHeader.getType() != OpCode.ping) &&
                                 (p.requestHeader.getType() != OpCode.auth)) {
                             p.requestHeader.setXid(cnxn.getXid());
                         }
-                        p.createBB();
+                        p.createBB();//创建ByteBuffer，NIO中的buffer概念
                     }
-                    sock.write(p.bb);
-                    if (!p.bb.hasRemaining()) {
+                    sock.write(p.bb);//发送数据给服务端
+                    if (!p.bb.hasRemaining()) {//如果BB中取不到了，也就是没有剩余的数据了，
                         sentCount++;
-                        outgoingQueue.removeFirstOccurrence(p);
+                        outgoingQueue.removeFirstOccurrence(p);//取出的命令移除
                         if (p.requestHeader != null
                                 && p.requestHeader.getType() != OpCode.ping
                                 && p.requestHeader.getType() != OpCode.auth) {
                             synchronized (pendingQueue) {
-                                pendingQueue.add(p);
+                                pendingQueue.add(p);//需要等结果存到pendingQueue
                             }
                         }
                     }
@@ -133,7 +133,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     // from within ZooKeeperSaslClient (if client is configured
                     // to attempt SASL authentication), or in either doIO() or
                     // in doTransport() if not.
-                    disableWrite();
+                    disableWrite();//
                 } else if (!initialized && p != null && !p.bb.hasRemaining()) {
                     // On initial connection, write the complete connect request
                     // packet, but then disable further writes until after
@@ -158,7 +158,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         synchronized (outgoingQueue) {
             if (outgoingQueue.isEmpty()) {
                 return null;
-            }
+            }//第一个packet的bb不等于null 说明这个packet已经开始发送了   所以优先取出
             if (outgoingQueue.getFirst().bb != null // If we've already starting sending the first packet, we better finish
                 || !clientTunneledAuthenticationInProgress) {
                 return outgoingQueue.getFirst();
@@ -357,12 +357,12 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         updateNow();
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
-            if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
-                if (sc.finishConnect()) {
+            if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {//就绪的sc是连接事件
+                if (sc.finishConnect()) {//验证是否成功连接
                     updateLastSendAndHeard();
                     sendThread.primeConnection();
                 }
-            } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+            } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {//就绪的sc为读写事件
                 doIO(pendingQueue, outgoingQueue, cnxn);
             }
         }
@@ -370,7 +370,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
             synchronized(outgoingQueue) {
                 if (findSendablePacket(outgoingQueue,
                         cnxn.sendThread.clientTunneledAuthenticationInProgress()) != null) {
-                    enableWrite();
+                    enableWrite();//找到可以发送的packet 进行发送
                 }
             }
         }
@@ -393,16 +393,16 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     }
 
     @Override
-    public synchronized void disableWrite() {
+    public synchronized void disableWrite() {//
         int i = sockKey.interestOps();
-        if ((i & SelectionKey.OP_WRITE) != 0) {
+        if ((i & SelectionKey.OP_WRITE) != 0) {//兴趣集中write标志已设置的话   设置对write事件不感兴趣
             sockKey.interestOps(i & (~SelectionKey.OP_WRITE));
         }
     }
 
     synchronized private void enableRead() {
-        int i = sockKey.interestOps();
-        if ((i & SelectionKey.OP_READ) == 0) {
+        int i = sockKey.interestOps();//interestOps 获得兴趣集
+        if ((i & SelectionKey.OP_READ) == 0) {//兴趣集中read标志未设置的话   设置对read感兴趣
             sockKey.interestOps(i | SelectionKey.OP_READ);
         }
     }

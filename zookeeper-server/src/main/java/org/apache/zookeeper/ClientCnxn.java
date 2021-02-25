@@ -644,18 +644,18 @@ public class ClientCnxn {
     }
 
     private void finishPacket(Packet p) {
-        if (p.watchRegistration != null) {
+        if (p.watchRegistration != null) {//成功执行命名之后 才会注册watch到watchManganer
             p.watchRegistration.register(p.replyHeader.getErr());
         }
 
-        if (p.cb == null) {
+        if (p.cb == null) {//回调函数为空  同步执行
             synchronized (p) {
                 p.finished = true;
-                p.notifyAll();
+                p.notifyAll();//唤醒用户线程 packet.wait();    SendThread线程唤醒用户线程
             }
         } else {
             p.finished = true;
-            eventThread.queuePacket(p);
+            eventThread.queuePacket(p); //异步回调
         }
     }
 
@@ -734,13 +734,13 @@ public class ClientCnxn {
 
         void readResponse(ByteBuffer incomingBuffer) throws IOException {
             ByteBufferInputStream bbis = new ByteBufferInputStream(
-                    incomingBuffer);
+                    incomingBuffer);//序列化服务端的返回结果
             BinaryInputArchive bbia = BinaryInputArchive.getArchive(bbis);
             ReplyHeader replyHdr = new ReplyHeader();
 
-            replyHdr.deserialize(bbia, "header");
-            if (replyHdr.getXid() == -2) {
-                // -2 is the xid for pings
+            replyHdr.deserialize(bbia, "header");//反序列化构建ReplyHeader
+            if (replyHdr.getXid() == -2) {//由xid决定执行哪个结果
+                // -2 is the xid for pings //-2是ping的xid
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Got ping response for sessionid: 0x"
                             + Long.toHexString(sessionId)
@@ -750,7 +750,7 @@ public class ClientCnxn {
                 }
                 return;
             }
-            if (replyHdr.getXid() == -4) {
+            if (replyHdr.getXid() == -4) {//xid=-4，auth命令，验证命令
                 // -4 is the xid for AuthPacket               
                 if(replyHdr.getErr() == KeeperException.Code.AUTHFAILED.intValue()) {
                     state = States.AUTH_FAILED;                    
@@ -763,7 +763,7 @@ public class ClientCnxn {
                 }
                 return;
             }
-            if (replyHdr.getXid() == -1) {
+            if (replyHdr.getXid() == -1) {//xid=-1，WatcherEvent的逻辑，执行事件
                 // -1 means notification
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Got notification sessionid:0x"
@@ -794,7 +794,7 @@ public class ClientCnxn {
 
                 eventThread.queueEvent( we );
                 return;
-            }
+            }  // 如果上述xid没有配置上，那么说明这个命令是执行命令，比如create，delete等等
 
             // If SASL authentication is currently in progress, construct and
             // send a response packet immediately, rather than queuing a
@@ -809,7 +809,7 @@ public class ClientCnxn {
 
             Packet packet;
             synchronized (pendingQueue) {
-                if (pendingQueue.size() == 0) {
+                if (pendingQueue.size() == 0) {////本地没有数据，说明服务端发错数据了报错
                     throw new IOException("Nothing in the queue, but got "
                             + replyHdr.getXid());
                 }
@@ -817,10 +817,10 @@ public class ClientCnxn {
             }
             /*
              * Since requests are processed in order, we better get a response
-             * to the first request!
+             * to the first request! 因为请求是按顺序处理的，所以我们最好得到对第一个请求的响应!
              */
             try {
-                if (packet.requestHeader.getXid() != replyHdr.getXid()) {
+                if (packet.requestHeader.getXid() != replyHdr.getXid()) {//如果这个本地的xid不等于返回的xid，报错
                     packet.replyHeader.setErr(
                             KeeperException.Code.CONNECTIONLOSS.intValue());
                     throw new IOException("Xid out of order. Got Xid "
@@ -837,9 +837,9 @@ public class ClientCnxn {
                 packet.replyHeader.setZxid(replyHdr.getZxid());
                 if (replyHdr.getZxid() > 0) {
                     lastZxid = replyHdr.getZxid();
-                }
+                }//packet.response != null 说明是需要结果的请求
                 if (packet.response != null && replyHdr.getErr() == 0) {
-                    packet.response.deserialize(bbia, "response");
+                    packet.response.deserialize(bbia, "response");   //取出服务端的response给本地packet赋值，此时packet就包含了响应的数据
                 }
 
                 if (LOG.isDebugEnabled()) {
