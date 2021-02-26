@@ -412,8 +412,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (sessionTracker == null) {
             createSessionTracker();
         }
-        startSessionTracker();
-        setupRequestProcessors();
+        startSessionTracker();//开始运行session跟踪器
+        setupRequestProcessors();//启动请求处理器
 
         registerJMX();
 
@@ -426,7 +426,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         RequestProcessor syncProcessor = new SyncRequestProcessor(this,
                 finalProcessor);
         ((SyncRequestProcessor)syncProcessor).start();
-        firstProcessor = new PrepRequestProcessor(this, syncProcessor);
+        firstProcessor = new PrepRequestProcessor(this, syncProcessor);//PrepRequestProcessor是第一个处理器
         ((PrepRequestProcessor)firstProcessor).start();
     }
 
@@ -733,7 +733,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                     // processor it should wait for setting up the request
                     // processor chain. The state will be updated to RUNNING
                     // after the setup.
-                    while (state == State.INITIAL) {
+                    while (state == State.INITIAL) {//如果正在初始化，那就等着初始化完毕
                         wait(1000);
                     }
                 } catch (InterruptedException e) {
@@ -748,7 +748,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             touch(si.cnxn);
             boolean validpacket = Request.isValid(si.type);
             if (validpacket) {
-                firstProcessor.processRequest(si);
+                firstProcessor.processRequest(si);//处理请求
                 if (si.cnxn != null) {
                     incInProcess();
                 }
@@ -968,8 +968,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         // Through the magic of byte buffers, txn will not be
         // pointing
         // to the start of the txn
-        incomingBuffer = incomingBuffer.slice();
-        if (h.getType() == OpCode.auth) {
+        incomingBuffer = incomingBuffer.slice();//创建一个buff操作指针重置的实例 用于重置buff实例的状态
+        if (h.getType() == OpCode.auth) {//auth 请求处理
             LOG.info("got auth packet " + cnxn.getRemoteSocketAddress());
             AuthPacket authPacket = new AuthPacket();
             ByteBufferInputStream.byteBuffer2Record(incomingBuffer, authPacket);
@@ -1011,17 +1011,17 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             }
             return;
         } else {
-            if (h.getType() == OpCode.sasl) {
+            if (h.getType() == OpCode.sasl) {//sasl认证处理
                 Record rsp = processSasl(incomingBuffer,cnxn);
                 ReplyHeader rh = new ReplyHeader(h.getXid(), 0, KeeperException.Code.OK.intValue());
                 cnxn.sendResponse(rh,rsp, "response"); // not sure about 3rd arg..what is it?
                 return;
             }
-            else {
+            else {//主要的处理逻辑
                 Request si = new Request(cnxn, cnxn.getSessionId(), h.getXid(),
-                  h.getType(), incomingBuffer, cnxn.getAuthInfo());
+                  h.getType(), incomingBuffer, cnxn.getAuthInfo());//直接从buff里面拿出一个request
                 si.setOwner(ServerCnxn.me);
-                submitRequest(si);
+                submitRequest(si);////拿出后，提交request
             }
         }
         cnxn.incrOutstandingRequests(h);

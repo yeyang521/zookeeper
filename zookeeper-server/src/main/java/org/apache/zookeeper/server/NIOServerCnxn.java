@@ -242,9 +242,9 @@ public class NIOServerCnxn extends ServerCnxn {
 
                 return;
             }
-            if (k.isReadable()) {
+            if (k.isReadable()) {//读取准备完毕
                 int rc = sock.read(incomingBuffer);
-                if (rc < 0) {
+                if (rc < 0) {//剩下的数据小于0，报错
                     throw new EndOfStreamException(
                             "Unable to read additional data from client sessionid 0x"
                             + Long.toHexString(sessionId)
@@ -260,8 +260,8 @@ public class NIOServerCnxn extends ServerCnxn {
                         // continuation
                         isPayload = true;
                     }
-                    if (isPayload) { // not the case for 4letterword
-                        readPayload();
+                    if (isPayload) { // not the case for 4 letter word
+                        readPayload();//正式加载数据
                     }
                     else {
                         // four letter words take care

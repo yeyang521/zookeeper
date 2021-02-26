@@ -76,7 +76,7 @@ import org.apache.zookeeper.txn.TxnHeader;
  * state of the system. It counts on ZooKeeperServer to update
  * outstandingRequests, so that it can take into account transactions that are
  * in the queue to be applied when generating a transaction.
- */
+ *///做认证，生成txn事务对象，完成后转交给SyncRP
 public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         RequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(PrepRequestProcessor.class);
@@ -120,7 +120,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
     public void run() {
         try {
             while (true) {
-                Request request = submittedRequests.take();
+                Request request = submittedRequests.take();///取出请求
                 long traceMask = ZooTrace.CLIENT_REQUEST_TRACE_MASK;
                 if (request.type == OpCode.ping) {
                     traceMask = ZooTrace.CLIENT_PING_TRACE_MASK;
@@ -131,7 +131,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 if (Request.requestOfDeath == request) {
                     break;
                 }
-                pRequest(request);
+                pRequest(request);//开始处理
             }
         } catch (RequestProcessorException e) {
             if (e.getCause() instanceof XidRolloverException) {
@@ -327,7 +327,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 CreateRequest createRequest = (CreateRequest)record;   
                 if(deserialize)
                     ByteBufferInputStream.byteBuffer2Record(request.request, createRequest);
-                String path = createRequest.getPath();
+                String path = createRequest.getPath();//拿到path
                 int lastSlash = path.lastIndexOf('/');
                 if (lastSlash == -1 || path.indexOf('\0') != -1 || failCreate) {
                     LOG.info("Invalid path " + path + " with session 0x" +
@@ -338,15 +338,15 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 if (!fixupACL(request.authInfo, listACL)) {
                     throw new KeeperException.InvalidACLException(path);
                 }
-                String parentPath = path.substring(0, lastSlash);
-                ChangeRecord parentRecord = getRecordForPath(parentPath);
+                String parentPath = path.substring(0, lastSlash);//拿出父节点的路径
+                ChangeRecord parentRecord = getRecordForPath(parentPath);//根据路径找到父节点记录record
 
                 checkACL(zks, parentRecord.acl, ZooDefs.Perms.CREATE,
                         request.authInfo);
-                int parentCVersion = parentRecord.stat.getCversion();
+                int parentCVersion = parentRecord.stat.getCversion();//取父节点的Cversion
                 CreateMode createMode =
-                    CreateMode.fromFlag(createRequest.getFlags());
-                if (createMode.isSequential()) {
+                    CreateMode.fromFlag(createRequest.getFlags());//取出来createMode
+                if (createMode.isSequential()) {//如果createMode是序列化的，那么取出parentCVersion，这里是上面parentPath取出来的
                     path = path + String.format(Locale.ENGLISH, "%010d", parentCVersion);
                 }
                 validatePath(path, request.sessionId);
@@ -356,25 +356,25 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                     }
                 } catch (KeeperException.NoNodeException e) {
                     // ignore this one
-                }
+                } //看下父节点是不是临时节点，getEphemeralOwner()存的是Sessionid，(临时节点才会保存Sessionid)
                 boolean ephemeralParent = parentRecord.stat.getEphemeralOwner() != 0;
-                if (ephemeralParent) {
+                if (ephemeralParent) {//临时节点不允许创建子节点
                     throw new KeeperException.NoChildrenForEphemeralsException(path);
-                }
+                }//newCversion就是要真正创建的节点，取了当前父节点的子节点的版本+1
                 int newCversion = parentRecord.stat.getCversion()+1;
-                request.txn = new CreateTxn(path, createRequest.getData(),
+                request.txn = new CreateTxn(path, createRequest.getData(),//txn就是事务
                         listACL,
                         createMode.isEphemeral(), newCversion);
                 StatPersisted s = new StatPersisted();
                 if (createMode.isEphemeral()) {
                     s.setEphemeralOwner(request.sessionId);
                 }
-                parentRecord = parentRecord.duplicate(request.hdr.getZxid());
+                parentRecord = parentRecord.duplicate(request.hdr.getZxid());//刷新父节点记录
                 parentRecord.childCount++;
                 parentRecord.stat.setCversion(newCversion);
-                addChangeRecord(parentRecord);
+                addChangeRecord(parentRecord); //第一个修改添加父节点修改记录
                 addChangeRecord(new ChangeRecord(request.hdr.getZxid(), path, s,
-                        0, listACL));
+                        0, listACL)); //第二个修改添加子节点修改记录
                 break;
             case OpCode.delete:
                 zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
@@ -536,7 +536,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         try {
             switch (request.type) {
                 case OpCode.create:
-                CreateRequest createRequest = new CreateRequest();
+                CreateRequest createRequest = new CreateRequest();//构造create request
                 pRequest2Txn(request.type, zks.getNextZxid(), request, createRequest, true);
                 break;
             case OpCode.delete:

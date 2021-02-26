@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  *             It never send ack back to the leader, so the nextProcessor will
  *             be null. This change the semantic of txnlog on the observer
  *             since it only contains committed txns.
- */
+ *///事务对象持久化(生成事务文件)，打快照，完成后转交给FinalRP
 public class SyncRequestProcessor extends ZooKeeperCriticalThread implements RequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(SyncRequestProcessor.class);
     private final ZooKeeperServer zks;
@@ -137,12 +137,12 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                 }
                 if (si != null) {
                     // track the number of records written to the log
-                    if (zks.getZKDatabase().append(si)) {
+                    if (zks.getZKDatabase().append(si)) {//追加日志
                         logCount++;
-                        if (logCount > (snapCount / 2 + randRoll)) {
+                        if (logCount > (snapCount / 2 + randRoll)) {//这里是什么样的数量下要做快照
                             setRandRoll(r.nextInt(snapCount/2));
                             // roll the log
-                            zks.getZKDatabase().rollLog();
+                            zks.getZKDatabase().rollLog();//滚动并生成新的快照log文件
                             // take a snapshot
                             if (snapInProcess != null && snapInProcess.isAlive()) {
                                 LOG.warn("Too busy to snap, skipping");
@@ -150,7 +150,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                                 snapInProcess = new ZooKeeperThread("Snapshot Thread") {
                                         public void run() {
                                             try {
-                                                zks.takeSnapshot();
+                                                zks.takeSnapshot();//起新线程 大快照
                                             } catch(Exception e) {
                                                 LOG.warn("Unexpected exception", e);
                                             }
@@ -185,14 +185,14 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
         }
         LOG.info("SyncRequestProcessor exited!");
     }
-
+    //冲刷日志文件
     private void flush(LinkedList<Request> toFlush)
         throws IOException, RequestProcessorException
     {
         if (toFlush.isEmpty())
             return;
 
-        zks.getZKDatabase().commit();
+        zks.getZKDatabase().commit();//也就是事务提交
         while (!toFlush.isEmpty()) {
             Request i = toFlush.remove();
             if (nextProcessor != null) {

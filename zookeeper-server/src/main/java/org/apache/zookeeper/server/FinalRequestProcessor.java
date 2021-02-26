@@ -76,7 +76,7 @@ import org.apache.zookeeper.OpResult.ErrorResult;
  *
  * This RequestProcessor counts on ZooKeeperServer to populate the
  * outstandingRequests member of ZooKeeperServer.
- */
+ *///做内存更改，处理事件响应啥的都是在这里弄的，返回客户端响应
 public class FinalRequestProcessor implements RequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(FinalRequestProcessor.class);
 
@@ -99,10 +99,10 @@ public class FinalRequestProcessor implements RequestProcessor {
             ZooTrace.logRequest(LOG, traceMask, 'E', request, "");
         }
         ProcessTxnResult rc = null;
-        synchronized (zks.outstandingChanges) {
+        synchronized (zks.outstandingChanges) {//获取修改记录
             while (!zks.outstandingChanges.isEmpty()
                     && zks.outstandingChanges.get(0).zxid <= request.zxid) {
-                ChangeRecord cr = zks.outstandingChanges.remove(0);
+                ChangeRecord cr = zks.outstandingChanges.remove(0);//拿出修改记录cr
                 if (cr.zxid < request.zxid) {
                     LOG.warn("Zxid outstanding "
                             + cr.zxid
@@ -116,7 +116,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                TxnHeader hdr = request.hdr;
                Record txn = request.txn;
 
-               rc = zks.processTxn(hdr, txn);
+               rc = zks.processTxn(hdr, txn);//把head和txn传进去，更新内存
             }
             // do not add non quorum packets to the queue.
             if (Request.isQuorum(request.type)) {
@@ -415,7 +415,7 @@ public class FinalRequestProcessor implements RequestProcessor {
         cnxn.updateStatsForResponse(request.cxid, lastZxid, lastOp,
                     request.createTime, Time.currentElapsedTime());
 
-        try {
+        try {//最终在这里Response数据
             cnxn.sendResponse(hdr, rsp, "response");
             if (closeSession) {
                 cnxn.sendCloseSession();

@@ -113,10 +113,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
     @Override
     public void startup(ZooKeeperServer zks) throws IOException,
             InterruptedException {
-        start();
+        start();//执行自己的run方法
         setZooKeeperServer(zks);
-        zks.startdata();
-        zks.startup();
+        zks.startdata();//加载文件数据
+        zks.startup();//启动server
     }
 
     @Override
@@ -209,7 +209,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                         selected);
                 Collections.shuffle(selectedList);
                 for (SelectionKey k : selectedList) {
-                    if ((k.readyOps() & SelectionKey.OP_ACCEPT) != 0) {
+                    if ((k.readyOps() & SelectionKey.OP_ACCEPT) != 0) {//如果是连接请求
                         SocketChannel sc = ((ServerSocketChannel) k
                                 .channel()).accept();
                         InetAddress ia = sc.socket().getInetAddress();
@@ -224,13 +224,13 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                             sc.configureBlocking(false);
                             SelectionKey sk = sc.register(selector,
                                     SelectionKey.OP_READ);
-                            NIOServerCnxn cnxn = createConnection(sc, sk);
+                            NIOServerCnxn cnxn = createConnection(sc, sk);//建立连接
                             sk.attach(cnxn);
                             addCnxn(cnxn);
                         }
                     } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
-                        NIOServerCnxn c = (NIOServerCnxn) k.attachment();
-                        c.doIO(k);
+                        NIOServerCnxn c = (NIOServerCnxn) k.attachment();  //如果不是建立连接的，就是一些写或者读的数据
+                        c.doIO(k);//和客户端一样开始doIO
                     } else {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Unexpected ops in select "

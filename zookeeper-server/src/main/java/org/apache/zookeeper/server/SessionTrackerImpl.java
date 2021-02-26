@@ -144,15 +144,15 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
             while (running) {
                 currentTime = Time.currentElapsedTime();
                 if (nextExpirationTime > currentTime) {
-                    this.wait(nextExpirationTime - currentTime);
+                    this.wait(nextExpirationTime - currentTime);//不断地倒计时
                     continue;
                 }
                 SessionSet set;
-                set = sessionSets.remove(nextExpirationTime);
+                set = sessionSets.remove(nextExpirationTime);//如果有过期的，把过期的移除
                 if (set != null) {
                     for (SessionImpl s : set.sessions) {
                         setSessionClosing(s.sessionId);
-                        expirer.expire(s);
+                        expirer.expire(s);//然后通知客户端，关闭session
                     }
                 }
                 nextExpirationTime += expirationInterval;
