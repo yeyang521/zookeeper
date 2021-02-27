@@ -83,7 +83,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     if (findSendablePacket(outgoingQueue,
                             cnxn.sendThread.clientTunneledAuthenticationInProgress()) != null) {
                         // Since SASL authentication has completed (if client is configured to do so),
-                        // outgoing packets waiting in the outgoingQueue can now be sent.ff
+                        // outgoing packets waiting in the outgoingQueue can now be sent.ffSendThread.run
                         enableWrite();
                     }
                     lenBuffer.clear();

@@ -422,7 +422,7 @@ public class ClientCnxn {
         eventThread.start();
     }
 
-    private Object eventOfDeath = new Object();
+    private Object eventOfDeath = new Object();//通知eventThread 关闭的通知事件
 
     private static class WatcherSetEventPair {
         private final Set<Watcher> watchers;
@@ -445,9 +445,9 @@ public class ClientCnxn {
         return name + suffix;
     }
 
-    class EventThread extends ZooKeeperThread {
-        private final LinkedBlockingQueue<Object> waitingEvents =
-            new LinkedBlockingQueue<Object>();
+    class EventThread extends ZooKeeperThread {//waitingEvents中存在二种异步调用 1.watch键值对  用于异步执行对应的监视器, 2. 执行异步调用  对象是packet其中包含了返回结果
+        private final LinkedBlockingQueue<Object> waitingEvents =//watch在sendThread readResponse 读取结果时判断响应类型时处理()replyHdr.getXid() == -1
+            new LinkedBlockingQueue<Object>();//异步执行在finishPacket判断    结论为 异步调用和watch监视器会互相影响
 
         /** This is really the queued session state until the event
          * thread actually processes the event and hands it to the watcher.
@@ -644,7 +644,7 @@ public class ClientCnxn {
     }
 
     private void finishPacket(Packet p) {
-        if (p.watchRegistration != null) {//成功执行命名之后 才会注册watch到watchManganer
+        if (p.watchRegistration != null) {//成功执行命令之后 才会注册watch到watchManganer
             p.watchRegistration.register(p.replyHeader.getErr());
         }
 

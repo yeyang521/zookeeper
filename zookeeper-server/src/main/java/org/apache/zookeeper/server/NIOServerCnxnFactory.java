@@ -197,7 +197,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
         }
     }
 
-    public void run() {
+    public void run() {//io线程处理 读写事件 和连接事件
         while (!ss.socket().isClosed()) {
             try {
                 selector.select(1000);
