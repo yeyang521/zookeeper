@@ -230,7 +230,7 @@ public class Learner {
                 sock.setTcpNoDelay(nodelay);
                 break;
             } catch (IOException e) {
-                if (tries == 4) {
+                if (tries == 4) {//第五次还连接不上报错
                     LOG.error("Unexpected exception",e);
                     throw e;
                 } else {
@@ -276,8 +276,8 @@ public class Learner {
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
         
-        writePacket(qp, true);
-        readPacket(qp);        
+        writePacket(qp, true);//写数据
+        readPacket(qp);  //接收的来自leader的数据
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
 		if (qp.getType() == Leader.LEADERINFO) {
         	// we are connected to a 1.0 server so accept the new epoch and read the next packet
@@ -295,15 +295,15 @@ public class Learner {
                 wrappedEpochBytes.putInt(-1);
         	} else {
         		throw new IOException("Leaders epoch, " + newEpoch + " is less than accepted epoch, " + self.getAcceptedEpoch());
-        	}
+        	}//构造一个ackNewEpoch
         	QuorumPacket ackNewEpoch = new QuorumPacket(Leader.ACKEPOCH, lastLoggedZxid, epochBytes, null);
         	writePacket(ackNewEpoch, true);
             return ZxidUtils.makeZxid(newEpoch, 0);
         } else {
-        	if (newEpoch > self.getAcceptedEpoch()) {
+        	if (newEpoch > self.getAcceptedEpoch()) {//不管事什么信息 先更新纪元
         		self.setAcceptedEpoch(newEpoch);
         	}
-            if (qp.getType() != Leader.NEWLEADER) {
+            if (qp.getType() != Leader.NEWLEADER) { // 不是新leader则报错
                 LOG.error("First packet should have been NEWLEADER");
                 throw new IOException("First packet should have been NEWLEADER");
             }

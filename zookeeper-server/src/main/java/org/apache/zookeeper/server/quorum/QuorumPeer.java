@@ -633,10 +633,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     
     @Override
     public synchronized void start() {
-        loadDataBase();
-        cnxnFactory.start();        
-        startLeaderElection();
-        super.start();
+        loadDataBase();//加载内存快照和事务日志
+        cnxnFactory.start();//io线程
+        startLeaderElection();//领导者选举
+        super.start();//集群线程
     }
 
     private void loadDataBase() {
@@ -873,7 +873,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 cnxnFactory.getLocalAddress());
 
         LOG.debug("Starting quorum peer");
-        try {
+        try {//JMX逻辑 可以略过
             jmxQuorumBean = new QuorumBean(this);
             MBeanRegistry.getInstance().register(jmxQuorumBean, null);
             for(QuorumServer s: getView().values()){
@@ -904,9 +904,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             /*
              * Main loop
              */
-            while (running) {
+            while (running) {//主循环
                 switch (getPeerState()) {
-                case LOOKING:
+                case LOOKING://还没有确定好角色  选举开始
                     LOG.info("LOOKING");
 
                     if (Boolean.getBoolean("readonlymode.enabled")) {
@@ -991,8 +991,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 case LEADING:
                     LOG.info("LEADING");
                     try {
-                        setLeader(makeLeader(logFactory));
-                        leader.lead();
+                        setLeader(makeLeader(logFactory));//new一个leader
+                        leader.lead(); //核心方法
                         setLeader(null);
                     } catch (Exception e) {
                         LOG.warn("Unexpected exception",e);

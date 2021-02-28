@@ -37,7 +37,7 @@ public class StateSummary {
 	public long getLastZxid() {
 		return lastZxid;
 	}
-	
+	//判断这个State是否比 ss更领先
 	public boolean isMoreRecentThan(StateSummary ss) {
 		return (currentEpoch > ss.currentEpoch) || (currentEpoch == ss.currentEpoch && lastZxid > ss.lastZxid);
 	}

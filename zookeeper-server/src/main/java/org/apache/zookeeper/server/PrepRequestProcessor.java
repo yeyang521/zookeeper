@@ -478,7 +478,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                     }
                     for (String path2Delete : es) {
                         addChangeRecord(new ChangeRecord(request.hdr.getZxid(),
-                                path2Delete, null, 0, null));
+                                path2Delete, null, 0, null));//在缓存中添加一条状态异常的数据, 数据变更时会优先查询缓存,终止数据变更的操作
                     }
 
                     zks.sessionTracker.setSessionClosing(request.sessionId);
