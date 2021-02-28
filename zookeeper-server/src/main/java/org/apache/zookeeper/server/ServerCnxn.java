@@ -48,7 +48,7 @@ import org.apache.zookeeper.proto.RequestHeader;
 /**
  * Interface to a Server connection - represents a connection from a client
  * to the server.
- */
+ *///每个ServerCnxn 对应一个客户端连接(保存SelectionKey)
 public abstract class ServerCnxn implements Stats, Watcher {
     // This is just an arbitrary object to represent requests issued by
     // (aka owned by) this class

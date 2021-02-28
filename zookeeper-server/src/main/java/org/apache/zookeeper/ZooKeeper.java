@@ -130,7 +130,8 @@ public class ZooKeeper {
      * the public methods will not be exposed as part of the ZooKeeper client
      * API.
      */
-    private static class ZKWatchManager implements ClientWatchManager {
+    private static class ZKWatchManager implements ClientWatchManager { //server端只根据请求的参数值的flag来判断是否发送watch通知
+        // (通知携带类型), client端根据通知的类型来触发指定watcher
         private final Map<String, Set<Watcher>> dataWatches =
             new HashMap<String, Set<Watcher>>();
         private final Map<String, Set<Watcher>> existWatches =

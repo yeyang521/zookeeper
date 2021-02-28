@@ -223,10 +223,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                                      + sc.socket().getRemoteSocketAddress());
                             sc.configureBlocking(false);
                             SelectionKey sk = sc.register(selector,
-                                    SelectionKey.OP_READ);
-                            NIOServerCnxn cnxn = createConnection(sc, sk);
-                            sk.attach(cnxn);
-                            addCnxn(cnxn);
+                                    SelectionKey.OP_READ);//注册sc到选择器
+                            NIOServerCnxn cnxn = createConnection(sc, sk);//创建服务端处理器
+                            sk.attach(cnxn);//设置服务端处理器
+                            addCnxn(cnxn);//
                         }
                     } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
                         NIOServerCnxn c = (NIOServerCnxn) k.attachment();
