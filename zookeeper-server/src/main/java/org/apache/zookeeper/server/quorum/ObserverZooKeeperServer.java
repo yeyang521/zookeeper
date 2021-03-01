@@ -98,6 +98,9 @@ public class ObserverZooKeeperServer extends LearnerZooKeeperServer {
         // We might consider changing the processor behaviour of 
         // Observers to, for example, remove the disk sync requirements.
         // Currently, they behave almost exactly the same as followers.
+
+        //ObserverRequestProcessor-->CommitProcessor-->FinalRequestProcessor
+
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         commitProcessor = new CommitProcessor(finalProcessor,
                 Long.toString(getServerId()), true,
@@ -114,6 +117,7 @@ public class ObserverZooKeeperServer extends LearnerZooKeeperServer {
          * However, this may degrade performance as it has to write to disk
          * and do periodic snapshot which may double the memory requirements
          */
+
         if (syncRequestProcessorEnabled) {
             syncProcessor = new SyncRequestProcessor(this, null);
             syncProcessor.start();

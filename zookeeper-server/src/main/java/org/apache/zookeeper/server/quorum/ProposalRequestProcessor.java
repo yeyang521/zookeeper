@@ -67,11 +67,12 @@ public class ProposalRequestProcessor implements RequestProcessor {
          * contain the handler. In this case, we add it to syncHandler, and 
          * call processRequest on the next processor.
          */
-        
+        //判断是不是learner的sync请求
         if(request instanceof LearnerSyncRequest){
             zks.getLeader().processSync((LearnerSyncRequest)request);
-        } else {
-                nextProcessor.processRequest(request);
+        } else {//不是，就走这里
+                nextProcessor.processRequest(request); //交给下一个处理器  下一个线程被阻塞  等待提案结果
+            // 说明一下，如果是`get`或者`ping`，就不会有事务头。
             if (request.hdr != null) {
                 // We need to sync and get consensus on any transactions
                 try {

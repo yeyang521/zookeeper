@@ -514,7 +514,7 @@ public class LearnerHandler extends ZooKeeperThread {
                     Thread.currentThread().setName(
                             "Sender-" + sock.getRemoteSocketAddress());
                     try {
-                        sendPackets();
+                        sendPackets();   //独立的新线程专门用于发送packet
                     } catch (InterruptedException e) {
                         LOG.warn("Unexpected interruption",e);
                     }

@@ -634,7 +634,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     @Override
     public synchronized void start() {
         loadDataBase();//加载内存快照和事务日志
-        cnxnFactory.start();//io线程
+        cnxnFactory.start();//客户端 io线程  集群一开始就开启了io   但是初始化未完成之前请求会被阻塞
         startLeaderElection();//领导者选举
         super.start();//集群线程
     }

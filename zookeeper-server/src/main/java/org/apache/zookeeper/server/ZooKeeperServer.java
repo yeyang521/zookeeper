@@ -413,14 +413,14 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             createSessionTracker();
         }
         startSessionTracker();//开始运行session跟踪器
-        setupRequestProcessors();//启动请求处理器
+        setupRequestProcessors();//设置请求处理器 (单机和集群的区别在于调用这个方法的实现类不一样)
 
         registerJMX();
 
         setState(State.RUNNING);
         notifyAll();
     }
-
+    //单机Processor的组装方法
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor syncProcessor = new SyncRequestProcessor(this,

@@ -40,16 +40,18 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
 
     /**
      * Requests that we are holding until the commit comes in.
+     * 等待提交的请求
      */
     LinkedList<Request> queuedRequests = new LinkedList<Request>();
 
     /**
      * Requests that have been committed.
+     * 已提交的请求 (收到客户端ack过半的请求)。
      */
     LinkedList<Request> committedRequests = new LinkedList<Request>();
 
     RequestProcessor nextProcessor;
-    ArrayList<Request> toProcess = new ArrayList<Request>();
+    ArrayList<Request> toProcess = new ArrayList<Request>();//已处理的提案
 
     /**
      * This flag indicates whether we need to wait for a response to come back from the
@@ -70,23 +72,26 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
     @Override
     public void run() {
         try {
-            Request nextPending = null;            
-            while (!finished) {
+            Request nextPending = null;
+            //nextPending 主要用来筛选出    sync  closeSession 请求补充信息加入到  toProcess
+            while (!finished) {//1.此时queuedRequests里面只有一个create
                 int len = toProcess.size();
                 for (int i = 0; i < len; i++) {
-                    nextProcessor.processRequest(toProcess.get(i));
+                    nextProcessor.processRequest(toProcess.get(i)); // 一个个的执行toProcess中的请求
                 }
-                toProcess.clear();
+                toProcess.clear();//1.清空；2.清空
                 synchronized (this) {
+                    //1.判定false,跳过
+                    //2.判定ture,进入
                     if ((queuedRequests.size() == 0 || nextPending != null)
                             && committedRequests.size() == 0) {
-                        wait();
+                        wait();//commoit时唤醒
                         continue;
                     }
                     // First check and see if the commit came in for the pending
                     // request
                     if ((queuedRequests.size() == 0 || nextPending != null)
-                            && committedRequests.size() > 0) {
+                            && committedRequests.size() > 0) {//存在 可以commit的请求
                         Request r = committedRequests.remove();
                         /*
                          * We match with nextPending so that we can move to the
@@ -102,7 +107,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
                             nextPending.hdr = r.hdr;
                             nextPending.txn = r.txn;
                             nextPending.zxid = r.zxid;
-                            toProcess.add(nextPending);
+                            toProcess.add(nextPending);//已commit的请求加入到toProcess
                             nextPending = null;
                         } else {
                             // this request came from someone else so just
@@ -118,7 +123,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
                     continue;
                 }
 
-                synchronized (this) {
+                synchronized (this) { //设置nextPending
                     // Process the next requests in the queuedRequests
                     while (nextPending == null && queuedRequests.size() > 0) {
                         Request request = queuedRequests.remove();

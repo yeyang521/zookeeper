@@ -55,9 +55,12 @@ public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
     public Leader getLeader(){
         return self.leader;
     }
-    
+    //集群leader Processor 的组装方法
     @Override
     protected void setupRequestProcessors() {
+        //PrepRequestProcessor-->ProposalRequestProcessor-->CommitProcessor-->ToBeAppliedRequestProcessor
+        //-->FinalRequestProcessor
+        //SyncRequestProcessor.next->AckRequestProcessor
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor toBeAppliedProcessor = new Leader.ToBeAppliedRequestProcessor(
                 finalProcessor, getLeader().toBeApplied);

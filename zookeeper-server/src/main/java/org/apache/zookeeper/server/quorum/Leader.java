@@ -306,7 +306,7 @@ public class Leader {
      * This message type informs observers of a committed proposal.
      */
     final static int INFORM = 8;
-
+    //保存zxid和提案的对应关系
     ConcurrentMap<Long, Proposal> outstandingProposals = new ConcurrentHashMap<Long, Proposal>();
 
     ConcurrentLinkedQueue<Proposal> toBeApplied = new ConcurrentLinkedQueue<Proposal>();
@@ -588,7 +588,7 @@ public class Leader {
             }
             return;
         }
-        if (lastCommitted >= zxid) {
+        if (lastCommitted >= zxid) {//提案处理完毕后ack被丢弃
             if (LOG.isDebugEnabled()) {
                 LOG.debug("proposal has already been committed, pzxid: 0x{} zxid: 0x{}",
                         Long.toHexString(lastCommitted), Long.toHexString(zxid));
@@ -603,12 +603,12 @@ public class Leader {
             return;
         }
         
-        p.ackSet.add(sid);
+        p.ackSet.add(sid);//关键一步 每个follower io线程把自己加入到 p.ackSet
         if (LOG.isDebugEnabled()) {
             LOG.debug("Count for zxid: 0x{} is {}",
                     Long.toHexString(zxid), p.ackSet.size());
         }
-        if (self.getQuorumVerifier().containsQuorum(p.ackSet)){             
+        if (self.getQuorumVerifier().containsQuorum(p.ackSet)){  //其中一个io线程发现提案过半  提交提案
             if (zxid != lastCommitted+1) {
                 LOG.warn("Commiting zxid 0x{} from {} not first!",
                         Long.toHexString(zxid), followerAddr);
@@ -622,8 +622,8 @@ public class Leader {
             if (p.request == null) {
                 LOG.warn("Going to commmit null request for proposal: {}", p);
             }
-            commit(zxid);
-            inform(p);
+            commit(zxid);//通知follower提交事务
+            inform(p);//通知observer
             zk.commitProcessor.commit(p.request);
             if(pendingSyncs.containsKey(zxid)){
                 for(LearnerSyncRequest r: pendingSyncs.remove(zxid)) {
@@ -714,7 +714,7 @@ public class Leader {
 
     /**
      * Create a commit packet and send it to all the members of the quorum
-     * 
+     * 过半之后通知follower们提交事务
      * @param zxid
      */
     public void commit(long zxid) {
@@ -727,6 +727,7 @@ public class Leader {
     
     /**
      * Create an inform packet and send it to all observers.
+     * 提案获得过半ack时才会把数据通知observer
      * @param zxid
      * @param proposal
      */
@@ -774,7 +775,7 @@ public class Leader {
         }
         byte[] data = SerializeUtils.serializeRequest(request);
         proposalStats.setLastProposalSize(data.length);
-        QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);
+        QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);  //把请求包装成一个packet
         
         Proposal p = new Proposal();
         p.packet = pp;
@@ -785,8 +786,8 @@ public class Leader {
             }
 
             lastProposed = p.packet.getZxid();
-            outstandingProposals.put(lastProposed, p);
-            sendPacket(pp);
+            outstandingProposals.put(lastProposed, p);//发送的proposal放到这里队列里
+            sendPacket(pp);//发送出去
         }
         return p;
     }
