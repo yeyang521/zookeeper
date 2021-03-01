@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class has the control logic for the Leader.
- */
+ *///leader的职责包括 跟很多个follower和observer 通信
 public class Leader {
     private static final Logger LOG = LoggerFactory.getLogger(Leader.class);
     
@@ -325,7 +325,7 @@ public class Leader {
             try {
                 while (!stop) {
                     try{
-                        Socket s = ss.accept();
+                        Socket s = ss.accept();//开启socket, 其实就是阻塞调用 .
                         // start with the initLimit, once the ack is processed
                         // in LearnerHandler switch to the syncLimit
                         s.setSoTimeout(self.tickTime * self.initLimit);
@@ -333,8 +333,8 @@ public class Leader {
 
                         BufferedInputStream is = new BufferedInputStream(
                                 s.getInputStream());
-                        LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
-                        fh.start();
+                        LearnerHandler fh = new LearnerHandler(s, is, Leader.this); //构造了一个LearnerHandler
+                        fh.start(); //一个从服务连接上之后就开启一个LearnerHandler线程处理
                     } catch (SocketException e) {
                         if (stop) {
                             LOG.info("exception while shutting down acceptor: "
@@ -385,17 +385,17 @@ public class Leader {
 
         try {
             self.tick.set(0);
-            zk.loadData();
+            zk.loadData();//加载数据
             
             leaderStateSummary = new StateSummary(self.getCurrentEpoch(), zk.getLastProcessedZxid());
 
             // Start thread that waits for connection requests from 
             // new followers.
-            cnxAcceptor = new LearnerCnxAcceptor();
+            cnxAcceptor = new LearnerCnxAcceptor();//创建线程
             cnxAcceptor.start();
             
             readyToStart = true;
-            long epoch = getEpochToPropose(self.getId(), self.getAcceptedEpoch());
+            long epoch = getEpochToPropose(self.getId(), self.getAcceptedEpoch()); //获取达成共识的epoch
             
             zk.setZxid(ZxidUtils.makeZxid(epoch, 0));
             
@@ -872,23 +872,24 @@ public class Leader {
             if (!waitingForNewEpoch) {
                 return epoch;
             }
-            if (lastAcceptedEpoch >= epoch) {
-                epoch = lastAcceptedEpoch+1;
+            if (lastAcceptedEpoch >= epoch) {//核心就是在这里
+                epoch = lastAcceptedEpoch+1;//epoch初始化时是-1  如果学习者的纪元更大 则在lastAcceptedEpoch的基础上+1
             }
-            if (isParticipant(sid)) {
+            if (isParticipant(sid)) {//排除observer的sid
                 connectingFollowers.add(sid);
-            }
+            }  //进行过半验证
             QuorumVerifier verifier = self.getQuorumVerifier();
             if (connectingFollowers.contains(self.getId()) && 
-                                            verifier.containsQuorum(connectingFollowers)) {
-                waitingForNewEpoch = false;
-                self.setAcceptedEpoch(epoch);
-                connectingFollowers.notifyAll();
-            } else {
+                                            verifier.containsQuorum(connectingFollowers)) {//第二个follower连上来以后加上主服务已经过半
+                // 说明过半服务的最大epoch已经找到唤醒 connectingFollowers.notifyAll()
+                waitingForNewEpoch = false;//终止下面的循环
+                self.setAcceptedEpoch(epoch);//本机服务更新纪元
+                connectingFollowers.notifyAll();//唤醒等待验证epoch的connectingFollowers
+            } else { //如果没有通过,  加入一个集群有5台机器  第一个follower连上来时肯定会走到这个分支,这个io线程会阻塞在connectingFollowers.wait上
                 long start = Time.currentElapsedTime();
                 long cur = start;
                 long end = start + self.getInitLimit()*self.getTickTime();
-                while(waitingForNewEpoch && cur < end) {
+                while(waitingForNewEpoch && cur < end) {//wait直到选举成功
                     connectingFollowers.wait(end - cur);
                     cur = Time.currentElapsedTime();
                 }
@@ -896,7 +897,7 @@ public class Leader {
                     throw new InterruptedException("Timeout while waiting for epoch from quorum");        
                 }
             }
-            return epoch;
+            return epoch;// 第一个follower就可以返回达成共识的epoch
         }
     }
     // VisibleForTesting
@@ -905,25 +906,25 @@ public class Leader {
     protected boolean electionFinished = false;
     public void waitForEpochAck(long id, StateSummary ss) throws IOException, InterruptedException {
         synchronized(electingFollowers) {
-            if (electionFinished) {
+            if (electionFinished) {//选举结束就 停止选举
                 return;
             }
             if (ss.getCurrentEpoch() != -1) {
-                if (ss.isMoreRecentThan(leaderStateSummary)) {
+                if (ss.isMoreRecentThan(leaderStateSummary)) {//如果follower的ss更加领先则报错
                     throw new IOException("Follower is ahead of the leader, leader summary: " 
                                                     + leaderStateSummary.getCurrentEpoch()
                                                     + " (current epoch), "
                                                     + leaderStateSummary.getLastZxid()
                                                     + " (last zxid)");
                 }
-                if (isParticipant(id)) {
+                if (isParticipant(id)) {//如果是投票参与者
                     electingFollowers.add(id);
                 }
             }
             QuorumVerifier verifier = self.getQuorumVerifier();
             if (electingFollowers.contains(self.getId()) && verifier.containsQuorum(electingFollowers)) {
                 electionFinished = true;
-                electingFollowers.notifyAll();
+                electingFollowers.notifyAll();//老样子 等待过半ack
             } else {                
                 long start = Time.currentElapsedTime();
                 long cur = start;

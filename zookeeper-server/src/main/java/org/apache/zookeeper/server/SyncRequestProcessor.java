@@ -123,11 +123,11 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
             setRandRoll(r.nextInt(snapCount/2));
             while (true) {
                 Request si = null;
-                if (toFlush.isEmpty()) {
+                if (toFlush.isEmpty()) {//如果待冲刷队列为空 run线程可以阻塞在队列上
                     si = queuedRequests.take();
                 } else {
-                    si = queuedRequests.poll();
-                    if (si == null) {
+                    si = queuedRequests.poll();//如果队列不为空就必须要一直取出数据,直到si=null 主动去冲刷flush.
+                    if (si == null) {//代表一旦开始取数据 就必须取空数据 或者取到toFlush.size() > 1000 去冲刷数据
                         flush(toFlush);
                         continue;
                     }

@@ -130,7 +130,8 @@ public class ZooKeeper {
      * the public methods will not be exposed as part of the ZooKeeper client
      * API.
      */
-    private static class ZKWatchManager implements ClientWatchManager {
+    private static class ZKWatchManager implements ClientWatchManager { //server端只根据请求的参数值的flag来判断是否发送watch通知
+        // (通知携带类型), client端根据通知的类型来触发指定watcher
         private final Map<String, Set<Watcher>> dataWatches =
             new HashMap<String, Set<Watcher>>();
         private final Map<String, Set<Watcher>> existWatches =
@@ -149,7 +150,7 @@ public class ZooKeeper {
         /* (non-Javadoc)
          * @see org.apache.zookeeper.ClientWatchManager#materialize(Event.KeeperState, 
          *                                                        Event.EventType, java.lang.String)
-         */
+         *///根据type的类型从不同的map中使用clientPath 调出具体的watch对象返回除去
         @Override
         public Set<Watcher> materialize(Watcher.Event.KeeperState state,
                                         Watcher.Event.EventType type,

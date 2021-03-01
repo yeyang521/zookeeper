@@ -54,7 +54,7 @@ import org.apache.zookeeper.server.util.OSMXBean;
 /**
  * This class handles communication with clients using NIO. There is one per
  * client, but only one thread doing the communication.
- */
+ *///每个ServerCnxn 对应一个客户端连接(保存SelectionKey)
 public class NIOServerCnxn extends ServerCnxn {
     static final Logger LOG = LoggerFactory.getLogger(NIOServerCnxn.class);
 
@@ -66,9 +66,9 @@ public class NIOServerCnxn extends ServerCnxn {
 
     boolean initialized;
 
-    ByteBuffer lenBuffer = ByteBuffer.allocate(4);
+    ByteBuffer lenBuffer = ByteBuffer.allocate(4);//用于读取报文中payload的长度的缓存
 
-    ByteBuffer incomingBuffer = lenBuffer;
+    ByteBuffer incomingBuffer = lenBuffer;//哨兵,提示读取的时候进行长度的读取   用于读取payload的缓存,根据lenBuffer中读取的长度来分配内存
 
     LinkedBlockingQueue<ByteBuffer> outgoingBuffers = new LinkedBlockingQueue<ByteBuffer>();
 
@@ -162,39 +162,39 @@ public class NIOServerCnxn extends ServerCnxn {
             // We check if write interest here because if it is NOT set,
             // nothing is queued, so we can try to send the buffer right
             // away without waking up the selector
-            if(sk.isValid() &&
+            if(sk.isValid() &&//如果sk没有设置WRITE 兴趣,说明没有没有写排队   可以直接写入缓存
                     ((sk.interestOps() & SelectionKey.OP_WRITE) == 0)) {
                 try {
-                    sock.write(bb);
+                    sock.write(bb);//nio 非阻塞调用
                 } catch (IOException e) {
                     // we are just doing best effort right now
                 }
             }
             // if there is nothing left to send, we are done
-            if (bb.remaining() == 0) {
+            if (bb.remaining() == 0) { //也有可能没有直接写完
                 packetSent();
                 return;
             }
         }
 
         synchronized(this.factory){
-            sk.selector().wakeup();
+            sk.selector().wakeup();//主动唤醒在selector睡眠的io线程
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Add a buffer to outgoingBuffers, sk " + sk
                         + " is valid: " + sk.isValid());
             }
             outgoingBuffers.add(bb);
             if (sk.isValid()) {
-                sk.interestOps(sk.interestOps() | SelectionKey.OP_WRITE);
+                sk.interestOps(sk.interestOps() | SelectionKey.OP_WRITE);//设置对写感兴趣
             }
         }
     }
 
     /** Read the request payload (everything following the length prefix) */
     private void readPayload() throws IOException, InterruptedException {
-        if (incomingBuffer.remaining() != 0) { // have we read length bytes?
-            int rc = sock.read(incomingBuffer); // sock is non-blocking, so ok
-            if (rc < 0) {
+        if (incomingBuffer.remaining() != 0) { // have we read length bytes?  incomingBuffer未读满(代表不是一个完整的payload)
+            int rc = sock.read(incomingBuffer); // sock is non-blocking, so ok  尝试把 incomingBuffer补全
+            if (rc < 0) {//看起来是直接复制的工具类 因为不可能走到这个分支中来
                 throw new EndOfStreamException(
                         "Unable to read additional data from client sessionid 0x"
                         + Long.toHexString(sessionId)
@@ -211,7 +211,7 @@ public class NIOServerCnxn extends ServerCnxn {
                 readRequest();
             }
             lenBuffer.clear();
-            incomingBuffer = lenBuffer;
+            incomingBuffer = lenBuffer;//一个请求读取完毕之后设置哨兵
         }
     }
 
@@ -250,10 +250,11 @@ public class NIOServerCnxn extends ServerCnxn {
                             + Long.toHexString(sessionId)
                             + ", likely client has closed socket");
                 }
-                if (incomingBuffer.remaining() == 0) {
+                if (incomingBuffer.remaining() == 0) {//处理粘包的思路,在报文首部设置四个字节的payload长度,这个len相当于一个分割器指示了下一个请求的长度.
+                    // 由于有了报文长度 在没有读满缓存的情况下不会去处理不完整的数据
                     boolean isPayload;
                     if (incomingBuffer == lenBuffer) { // start of next request
-                        incomingBuffer.flip();
+                        incomingBuffer.flip();//缓存切换为读模式 准备读取lenBuffer中的数据(长度)
                         isPayload = readLength(k);
                         incomingBuffer.clear();
                     } else {
@@ -290,13 +291,13 @@ public class NIOServerCnxn extends ServerCnxn {
                     ByteBuffer directBuffer = factory.directBuffer;
                     directBuffer.clear();
 
-                    for (ByteBuffer b : outgoingBuffers) {
+                    for (ByteBuffer b : outgoingBuffers) {//整体逻辑是尽可能的的填充直接缓存.然后一次性提交给nio发送
                         if (directBuffer.remaining() < b.remaining()) {
                             /*
                              * When we call put later, if the directBuffer is to
                              * small to hold everything, nothing will be copied,
                              * so we've got to slice the buffer if it's too big.
-                             */
+                             *///数据大于直接内存 进行切分
                             b = (ByteBuffer) b.slice().limit(
                                     directBuffer.remaining());
                         }
@@ -320,7 +321,7 @@ public class NIOServerCnxn extends ServerCnxn {
                      */
                     directBuffer.flip();
 
-                    int sent = sock.write(directBuffer);
+                    int sent = sock.write(directBuffer);//非阻塞写 sent=写入的字节数 (写到直接内存中待发送的字节数)
                     ByteBuffer bb;
 
                     // Remove the buffers that we have sent
@@ -330,7 +331,7 @@ public class NIOServerCnxn extends ServerCnxn {
                             throw new CloseRequestException("close requested");
                         }
                         int left = bb.remaining() - sent;
-                        if (left > 0) {
+                        if (left > 0) {// 根据已发送数量sent 来遍历outgoingBuffers队列 完整发送的buff移除 ,找到最后一个buff(有可能发送了一部分)移动指针
                             /*
                              * We only partially sent this buffer, so we update
                              * the position and exit the loop.
@@ -864,7 +865,7 @@ public class NIOServerCnxn extends ServerCnxn {
         }
     }
 
-    /** Return if four letter word found and responded to, otw false **/
+    /** Return if four letter word found and responded to, otw false **/ //如果找到并响应了四个字母的单词，则返回，otw为false
     private boolean checkFourLetterWord(final SelectionKey k, final int len)
     throws IOException
     {
@@ -982,9 +983,9 @@ public class NIOServerCnxn extends ServerCnxn {
      */
     private boolean readLength(SelectionKey k) throws IOException {
         // Read the length, now get the buffer
-        int len = lenBuffer.getInt();
+        int len = lenBuffer.getInt();//读取payload长度
         if (!initialized && checkFourLetterWord(sk, len)) {
-            return false;
+            return false;//说明不需要读取payload (4字命令没有payload)
         }
         if (len < 0 || len > BinaryInputArchive.maxBuffer) {
             throw new IOException("Len error " + len);
@@ -992,7 +993,7 @@ public class NIOServerCnxn extends ServerCnxn {
         if (!isZKServerRunning()) {
             throw new IOException("ZooKeeperServer not running");
         }
-        incomingBuffer = ByteBuffer.allocate(len);
+        incomingBuffer = ByteBuffer.allocate(len);//根据lenBuffer中读取的长度来分配内存
         return true;
     }
 

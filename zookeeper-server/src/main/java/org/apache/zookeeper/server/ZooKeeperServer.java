@@ -125,7 +125,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     static final private long superSecret = 0XB3415C00L;
 
     private final AtomicInteger requestsInProcess = new AtomicInteger(0);
-    final List<ChangeRecord> outstandingChanges = new ArrayList<ChangeRecord>();
+    final List<ChangeRecord> outstandingChanges = new ArrayList<ChangeRecord>();//用于存放刚进行更改还没有同步到ZKDatabase中的节点信息
     // this data structure must be accessed under the outstandingChanges lock
     final HashMap<String, ChangeRecord> outstandingChangesForPath =
         new HashMap<String, ChangeRecord>();

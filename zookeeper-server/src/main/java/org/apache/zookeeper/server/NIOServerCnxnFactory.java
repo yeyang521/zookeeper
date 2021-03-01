@@ -197,7 +197,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
         }
     }
 
-    public void run() {
+    public void run() {//io线程处理 读写事件 和连接事件
         while (!ss.socket().isClosed()) {
             try {
                 selector.select(1000);
@@ -223,10 +223,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                                      + sc.socket().getRemoteSocketAddress());
                             sc.configureBlocking(false);
                             SelectionKey sk = sc.register(selector,
-                                    SelectionKey.OP_READ);
-                            NIOServerCnxn cnxn = createConnection(sc, sk);//建立连接
-                            sk.attach(cnxn);
-                            addCnxn(cnxn);
+                                    SelectionKey.OP_READ);//注册sc到选择器
+                            NIOServerCnxn cnxn = createConnection(sc, sk);//创建服务端处理器
+                            sk.attach(cnxn);//设置服务端处理器
+                            addCnxn(cnxn);//
                         }
                     } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
                         NIOServerCnxn c = (NIOServerCnxn) k.attachment();  //如果不是建立连接的，就是一些写或者读的数据

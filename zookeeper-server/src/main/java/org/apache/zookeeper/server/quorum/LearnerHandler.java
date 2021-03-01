@@ -322,7 +322,7 @@ public class LearnerHandler extends ZooKeeperThread {
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
 
             QuorumPacket qp = new QuorumPacket();
-            ia.readRecord(qp, "packet");
+            ia.readRecord(qp, "packet");//当建立连接后首先从socket里面读数据，说明learner(学习者)要先发送数据
             if(qp.getType() != Leader.FOLLOWERINFO && qp.getType() != Leader.OBSERVERINFO){
             	LOG.error("First packet " + qp.toString()
                         + " is not FOLLOWERINFO or OBSERVERINFO!");
@@ -348,8 +348,8 @@ public class LearnerHandler extends ZooKeeperThread {
                         
             if (qp.getType() == Leader.OBSERVERINFO) {
                   learnerType = LearnerType.OBSERVER;
-            }            
-            
+            }
+            //拿到最新的learner的Epoch
             long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
             
             long peerLastZxid;
@@ -365,12 +365,12 @@ public class LearnerHandler extends ZooKeeperThread {
                 leader.waitForEpochAck(this.getSid(), ss);
             } else {
                 byte ver[] = new byte[4];
-                ByteBuffer.wrap(ver).putInt(0x10000);
+                ByteBuffer.wrap(ver).putInt(0x10000); //发送Leader.LEADERINFO给其他
                 QuorumPacket newEpochPacket = new QuorumPacket(Leader.LEADERINFO, ZxidUtils.makeZxid(newEpoch, 0), ver, null);
-                oa.writeRecord(newEpochPacket, "packet");
+                oa.writeRecord(newEpochPacket, "packet");//写出去，给learner去读取这个新的Epoch
                 bufferedOutput.flush();
                 QuorumPacket ackEpochPacket = new QuorumPacket();
-                ia.readRecord(ackEpochPacket, "packet");
+                ia.readRecord(ackEpochPacket, "packet");//读取ack信息
                 if (ackEpochPacket.getType() != Leader.ACKEPOCH) {
                     LOG.error(ackEpochPacket.toString()
                             + " is not ACKEPOCH");
@@ -378,9 +378,9 @@ public class LearnerHandler extends ZooKeeperThread {
 				}
                 ByteBuffer bbepoch = ByteBuffer.wrap(ackEpochPacket.getData());
                 ss = new StateSummary(bbepoch.getInt(), ackEpochPacket.getZxid());
-                leader.waitForEpochAck(this.getSid(), ss);
+                leader.waitForEpochAck(this.getSid(), ss);//等待过半参与者ack
             }
-            peerLastZxid = ss.getLastZxid();
+            peerLastZxid = ss.getLastZxid();//这里拿到最新的follower端的id
             
             /* the default to send to the follower */
             int packetToSend = Leader.SNAP;
