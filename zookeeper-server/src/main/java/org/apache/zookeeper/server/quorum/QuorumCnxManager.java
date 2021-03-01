@@ -499,8 +499,8 @@ public class QuorumCnxManager {
             senderWorkerMap.put(sid, sw);
             queueSendMap.putIfAbsent(sid, new ArrayBlockingQueue<ByteBuffer>(SEND_CAPACITY));
             
-            sw.start();
-            rw.start();
+            sw.start();//启动一个发送线程
+            rw.start();//启动一个接受线程
             
             return;
         }
@@ -736,7 +736,7 @@ public class QuorumCnxManager {
                     LOG.info("My election bind port: " + addr.toString());
                     setName(view.get(QuorumCnxManager.this.mySid)
                             .electionAddr.toString());
-                    ss.bind(addr);
+                    ss.bind(addr);//监听选举端口
                     while (!shutdown) {
                         Socket client = ss.accept();
                         setSockOpts(client);
@@ -751,7 +751,7 @@ public class QuorumCnxManager {
                         if (quorumSaslAuthEnabled) {
                             receiveConnectionAsync(client);
                         } else {
-                            receiveConnection(client);
+                            receiveConnection(client); //
                         }
 
                         numRetries = 0;

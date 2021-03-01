@@ -709,7 +709,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     		re.setStackTrace(e.getStackTrace());
     		throw re;
     	}
-        for (QuorumServer p : getView().values()) {
+        for (QuorumServer p : getView().values()) {//寻找本机地址
             if (p.id == myid) {
                 myQuorumAddr = p.addr;
                 break;
@@ -718,7 +718,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if (myQuorumAddr == null) {
             throw new RuntimeException("My id " + myid + " not in the peer list");
         }
-        if (electionType == 0) {
+        if (electionType == 0) {//判断选举类型
             try {
                 udpSocket = new DatagramSocket(myQuorumAddr.getPort());
                 responder = new ResponderThread();
@@ -822,11 +822,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             le = new AuthFastLeaderElection(this, true);
             break;
         case 3:
-            qcm = createCnxnManager();
+            qcm = createCnxnManager();    //初始化负责各个服务器之间的底层leader选举过程中的网络通信
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
                 listener.start();
-                le = new FastLeaderElection(this, qcm);
+                le = new FastLeaderElection(this, qcm);//硕果仅存的算法类
             } else {
                 LOG.error("Null listener when initializing cnx manager");
             }

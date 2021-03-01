@@ -88,13 +88,14 @@ public class Vote {
     
     final private int version;
     
-    final private long id;
+    final private long id;//myid
     
-    final private long zxid;
+    final private long zxid; //事务id
     
-    final private long electionEpoch;
+    final private long electionEpoch;//记录领导者选举的轮数，服务器内自己记录的。
+    // 这个数值越大，投票的权重越大，对传入的低数值epoch有否决权
     
-    final private long peerEpoch;
+    final private long peerEpoch;//选举周期，届号
     
     public int getVersion() {
         return version;
@@ -120,7 +121,7 @@ public class Vote {
         return state;
     }
 
-    final private ServerState state;
+    final private ServerState state;//选举状态
     
     @Override
     public boolean equals(Object o) {
